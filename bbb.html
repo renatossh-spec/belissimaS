@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Gestão de Clientes (Online)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<link rel="apple-touch-icon" href="https://i.imgur.com/vlgdC2N.png"> 
+<style>
+    /* Estilos Gerais */
+    body { font-family: sans-serif; background-color: pink; margin: 0; padding: 10px; }
+    .container-principal { max-width: 900px; margin: 0 auto; }
+    
+    /* Contentores de Ações */
+    .search-sort-container, .main-actions, .live-entry-container {
+        width: 100%; text-align: center; margin-bottom: 20px; background-color: #f0f8ff;
+        padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-sizing: border-box;
+    }
+    .search-sort-container {
+        display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px;
+    }
+    .filter-container {
+        display: flex; align-items: center; gap: 5px; background-color: #e3f2fd;
+        padding: 8px 12px; border-radius: 5px;
+    }
+    .filter-container label { cursor: pointer; font-weight: bold; color: #0d47a1; }
+
+    .main-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 30px; }
+    .main-actions button {
+        padding: 10px 15px; border-radius: 5px; border: none; cursor: pointer; color: white; font-size: 1em;
+    }
+    #add-new-client { background-color: #2196F3; }
+    #show-pagamentos-btn { background-color: #9c27b0; }
+    #print-devedores { background-color: #6c757d; }
+    #print-all-etiquetas { background-color: #333; }
+    #clear-all-data { background-color: #f44336; }
+    #show-reports-btn { background-color: #ff9800; }
+    #send-whatsapp-debtors-btn { background-color: #25D366; } 
+
+    /* Painel de Registo Rápido */
+    .live-entry-container h2 { margin-top: 0; color: #0056b3; }
+    .live-entry-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+    .live-entry-form div { display: flex; flex-direction: column; text-align: left; }
+    .live-entry-form label { margin-bottom: 4px; font-size: 0.9em; }
+    .live-entry-form input, .live-entry-form select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+    .live-entry-form button { background-color: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; height: 38px; }
+    .quick-actions { text-align: center; margin-top: 15px; }
+    
+    /* Sistema de Menu/Acordeão */
+    #clients-container { display: flex; flex-direction: column; gap: 10px; }
+    .client-menu { border: 1px solid #ccc; border-radius: 8px; background-color: #fff; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .client-menu.open > .client-header { background-color: #e9e9e9; }
+    .client-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; cursor: pointer; background-color: #f9f9f9; transition: background-color 0.3s; }
+    .client-header:hover { background-color: #efefef; }
+    
+    /* Estilos para Cores de Status */
+    .client-menu.status-concluido > .client-header { background-color: #E1BEE7; }
+    .client-menu.status-atencao > .client-header { background-color: #B71C1C; color: white; }
+    .client-menu.status-pago-urgente > .client-header,
+    .client-menu.status-pago-normal > .client-header { background-color: #4CAF50; color: white; }
+    .client-menu.status-pago-aguardar > .client-header { background-color: #FFEB3B; } 
+    .client-menu.status-nao-pago-aguardar-direto > .client-header { background-color: #FF9800; color: white; }
+    .client-menu.status-contacto-enviado > .client-header { background-color: #1565C0; color: white; }
+    .client-menu.status-pagamento-agendado > .client-header { background-color: #8D6E63; color: white; }
+    .client-menu.status-nao-pago-outro > .client-header { background-color: #E0E0E0; }
+
+    .client-menu.status-pago-urgente .client-total-preview,
+    .client-menu.status-pago-normal .client-total-preview,
+    .client-menu.status-nao-pago-aguardar-direto .client-total-preview,
+    .client-menu.status-atencao .client-total-preview,
+    .client-menu.status-contacto-enviado .client-total-preview,
+    .client-menu.status-pagamento-agendado .client-total-preview { color: white; }
+    
+    .client-header .client-name { font-weight: bold; font-size: 1.2em; color: #333; flex-grow: 1; }
+    .client-header .client-total-preview { font-size: 1em; color: #d32f2f; font-weight: bold; }
+    .client-header .toggle-arrow { font-size: 1.5em; transition: transform 0.3s; }
+    .client-menu.open .toggle-arrow { transform: rotate(180deg); }
+    .client-details-content { padding: 0 15px; max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out, padding 0.5s ease-out; }
+    .client-menu.open .client-details-content { max-height: 5000px; padding: 15px; }
+    
+    .client-header-info { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .order-status-label { font-weight: bold; color: #B71C1C; font-size: 0.9em; text-align: right; }
+
+    /* Lembrete Vermelho */
+    .modified-order-label {
+        background-color: #B71C1C;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: bold;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+
+    /* Conteúdo do card (dentro do menu) */
+    .mini-card-content { border-top: 1px solid #eee; padding-top: 10px; }
+    .client-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .info-item { grid-column: span 1; }
+    .info-item.full-width { grid-column: 1 / -1; }
+    .info-item > span:first-child { display: block; font-weight: bold; margin-bottom: 3px; }
+    .info-item .editavel { border-bottom: 1px dashed #ccc; padding: 2px; white-space: pre-wrap; min-height: 1em; cursor: pointer; }
+    
+    .status-container { display: flex; align-items: center; gap: 10px; }
+    .client-status-select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; background-color: white; font-size: 1em; flex-grow: 1; }
+    .status-message { font-weight: bold; color: black; font-size: 0.9em; }
+
+    .client-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee; }
+    .client-actions button { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; color: white; font-weight: bold; }
+    .marcar-pago-btn { background-color: #28a745; }
+    .whatsapp-btn { background-color: #25D366; }
+    .copiar-messenger-btn, .abrir-messenger-btn { background-color: #0078FF; }
+    .imprimir-etiqueta-btn { background-color: #007bff; }
+    .delete-client-btn { background-color: #dc3545; }
+    .subtotal-selecionado { text-align: right; font-weight: bold; margin-top: 15px; padding: 10px; background-color: #e3f2fd; color: #0d47a1; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px 5px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th:first-child, td:first-child { width: 30px; text-align: center; }
+    td button { background: none; border: none; cursor: pointer; font-size: 1.2em; }
+    tr.item-pago { background-color: #e8f5e9; color: #555; text-decoration: line-through; }
+    tr.item-nao-pago { background-color: #ffebee; }
+    .remove-item-btn { color: #333; }
+    .prepared-icon { color: #28a745; font-weight: bold; margin-right: 5px; }
+
+    /* Estilos para Módulos e Modais */
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5); z-index: 1000;
+        align-items: center; justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal-content {
+        background-color: white; padding: 20px; border-radius: 8px;
+        width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;
+    }
+    .modal-content h2, .modal-content h3 { margin-top: 0; }
+    .pagamentos-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; gap: 15px; }
+    .pagamentos-name { font-weight: bold; font-size: 1.2em; flex-grow: 1; }
+    .pagamentos-status-select { padding: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; }
+    .close-btn { background-color: #f44336; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+    #loading-indicator { text-align: center; font-size: 1.2em; padding: 30px; }
+    #generated-links-container a { display: block; margin-bottom: 10px; padding: 10px; background-color: #e9f5ff; border-radius: 5px; text-decoration: none; color: #0056b3; font-weight: bold; transition: background-color: 0.3s; }
+    #generated-links-container a:hover { background-color: #d0e8ff; }
+
+    /* Estilos Específicos do Relatório */
+    #live-report-buttons { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    #live-report-buttons button { padding: 12px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; background-color: #f9f9f9; font-weight: bold; text-align: left; }
+    #live-report-buttons button.geral { background-color: #ff9800; color: white; border-color: #ff9800; }
+    #live-report-buttons button:hover { background-color: #e0e0e0; }
+    #report-content { margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
+    #report-content p { font-size: 1.1em; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    #report-content p strong { color: #0056b3; }
+</style>
+</head>
+<body>
+
+<datalist id="artigos-sugestoes"></datalist>
+<datalist id="clientes-sugestoes"></datalist>
+
+<div class="container-principal">
+    
+    <div class="live-entry-container">
+        <h2>Registo Rápido de Live</h2>
+        <div class="live-entry-form">
+            <div>
+                <label for="live-entry-date">Data da Live</label>
+                <input type="date" id="live-entry-date">
+            </div>
+            <div>
+                <label for="live-entry-artigo">Artigo</label>
+                <input type="text" id="live-entry-artigo" list="artigos-sugestoes">
+            </div>
+            <div>
+                <label for="live-entry-preco">Preço (€)</label>
+                <input type="text" id="live-entry-preco">
+            </div>
+            <div>
+                <label for="live-entry-cliente">Cliente</label>
+                <input type="text" id="live-entry-cliente" list="clientes-sugestoes">
+            </div>
+            <button id="live-entry-add">Adicionar</button>
+        </div>
+        <div class="quick-actions">
+            <button id="add-new-client">Adicionar Novo Cliente</button>
+        </div>
+    </div>
+
+    <div class="search-sort-container">
+        <input type="text" id="client-search" placeholder="Pesquisar cliente...">
+        <select id="sort-order">
+            <option value="default">Ordem Padrão (Mais Recente)</option>
+            <option value="alphabetical">Ordem Alfabética (A-Z)</option>
+            <option value="devedores-az">Devedores (A-Z)</option>
+            <option value="pagos-az">Pagos (A-Z)</option>
+        </select>
+        <div class="filter-container">
+            <input type="checkbox" id="hide-completed-checkbox" name="hide-completed">
+            <label for="hide-completed-checkbox">Ocultar Concluídos</label>
+        </div>
+    </div>
+
+    <div id="loading-indicator">A ligar à base de dados...</div>
+    <div id="clients-container"></div>
+    
+    <div class="main-actions">
+        <button id="clear-all-data">Limpar Todos os Dados</button>
+        <button id="show-pagamentos-btn">Gerir Encomenda</button>
+        <button id="print-devedores">Imprimir Devedores</button>
+        <button id="print-all-etiquetas">Imprimir Todas as Etiquetas</button>
+        <button id="send-whatsapp-debtors-btn">Enviar WhatsApp a Devedores</button> 
+        <button id="show-reports-btn">Ver Relatórios</button>
+    </div>
+</div>
+
+<div id="pagamentos-container" class="modal-overlay">
+    <div class="modal-content">
+        <h2>Gerir Status de Encomendas</h2>
+        <div id="pagamentos-list"></div>
+        <button id="close-pagamentos" class="close-btn">Fechar</button>
+    </div>
+</div>
+
+<div id="generated-links-container" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Links de Envio Gerados</h3>
+        <div id="links-list"></div>
+        <button id="close-links" class="close-btn">Fechar</button>
+    </div>
+</div>
+
+<div id="report-container" class="modal-overlay">
+    <div class="modal-content">
+        <h3>Relatórios por Direto</h3>
+        <p style="font-size: 0.9em; color: #555;">Clique num direto para ver o relatório detalhado.</p>
+        <div id="live-report-buttons"></div>
+        <div id="report-content"></div>
+        <button id="close-report" class="close-btn">Fechar</button>
+    </div>
+</div>
+
+<script type="module">
+    // Importar funções do Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+
+    // As suas chaves de configuração do Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyDygp8suqra2bDIogCkOkhp0SuPMbKtzR0",
+        authDomain: "belissima-224d8.firebaseapp.com",
+        projectId: "belissima-224d8",
+        storageBucket: "belissima-224d8.appspot.com",
+        messagingSenderId: "556221200934",
+        appId: "1:556221200934:web:7bce4c636a1699846384e7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let allClients = [];
+    let unsubscribe;
+
+    // --- LIGAÇÃO À BASE DE DADOS ---
+    function getCollectionRef() {
+        return collection(db, "clientes");
+    }
+
+    function startApp() {
+        if (unsubscribe) unsubscribe(); 
+        
+        document.getElementById('loading-indicator').style.display = 'block';
+        
+        unsubscribe = onSnapshot(getCollectionRef(), (snapshot) => {
+            allClients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            document.getElementById('loading-indicator').style.display = 'none';
+            filterAndSortClients();
+            atualizarSugestoes();
+            renderPagamentosModal();
+        }, (error) => {
+            console.error("Erro no listener do Firestore: ", error);
+            document.getElementById('loading-indicator').innerText = "Erro de conexão. Verifique as permissões da base de dados.";
+        });
+    }
+
+    async function limparTodosOsDados() {
+        if (confirm(`Tem a certeza que deseja apagar TODOS os clientes? Esta ação é irreversível.`)) {
+            const querySnapshot = await getDocs(getCollectionRef());
+            const batch = writeBatch(db);
+            querySnapshot.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            alert("Todos os clientes foram apagados.");
+        }
+    }
+
+    // --- FUNÇÕES DE CÁLCULO E DADOS ---
+    function formatCurrency(v) { return (typeof v === 'number' ? v : 0).toFixed(2).replace('.', ',') + ' €'; }
+    function parseCurrency(t) { const n = parseFloat(String(t || '0').replace(/€/g, '').trim().replace(',', '.')); return isNaN(n) ? 0 : n; }
+    function calculateTotal(items = [], portes = 0) {
+        const itemsTotal = items.reduce((sum, item) => sum + (item.preco || 0), 0);
+        return itemsTotal + portes;
+    }
+
+    const clientHasDebt = (client) => (client.lives || []).some(l => (l.items || []).some(i => !i.paid));
+
+    async function adicionarNovoClienteManualmente(name) {
+        const clientName = name || `Cliente ${Date.now()}`;
+        try {
+            await addDoc(getCollectionRef(), {
+                name: clientName, 
+                shippingName: clientName, 
+                lives: [],
+                portes: 0, 
+                telefone: '+351910532676', 
+                morada: '', 
+                notes: '',
+                status: 'Não Pago - Aguardar Pagamento',
+                wasPaidOrder: false, 
+                orderModified: false,
+                createdAt: new Date()
+            });
+        } catch (e) { console.error("Erro ao adicionar cliente: ", e); }
+    }
+
+    async function deleteClient(clientId) {
+        if (confirm("Tem a certeza que deseja apagar este cliente e todos os seus dados? Esta ação é irreversível.")) {
+            try {
+                await deleteDoc(doc(getCollectionRef(), clientId));
+            } catch (e) {
+                console.error("Erro ao eliminar o cliente: ", e);
+                alert("Ocorreu um erro ao tentar eliminar o cliente.");
+            }
+        }
+    }
+
+    async function updateClientField(clientId, field, value) {
+        try {
+            const dataToUpdate = { [field]: value };
+            const client = allClients.find(c => c.id === clientId);
+
+            if (field === 'status') {
+                dataToUpdate.orderModified = false; 
+
+                if (value.startsWith('Pago') || value === 'Concluído - Enviado') {
+                    dataToUpdate.wasPaidOrder = false; 
+
+                    if (client && client.lives) {
+                        const updatedLives = JSON.parse(JSON.stringify(client.lives));
+                        updatedLives.forEach(live => {
+                            (live.items || []).forEach(item => { item.paid = true; });
+                        });
+                        dataToUpdate.lives = updatedLives;
+                    }
+                }
+            }
+            
+            await updateDoc(doc(getCollectionRef(), clientId), dataToUpdate);
+
+        } catch (e) { console.error(`Erro ao atualizar campo do cliente:`, e); }
+    }
+
+    async function registoRapidoAdicionar() {
+        const liveDate = document.getElementById('live-entry-date').value;
+        const artigo = document.getElementById('live-entry-artigo').value.trim();
+        const preco = parseCurrency(document.getElementById('live-entry-preco').value);
+        const clienteName = document.getElementById('live-entry-cliente').value.trim();
+
+        if (!artigo || !clienteName || !liveDate) { alert("Preencha todos os campos."); return; }
+
+        let client = allClients.find(c => c.name.toLowerCase() === clienteName.toLowerCase());
+
+        if (!client) {
+            if (confirm(`Cliente "${clienteName}" não encontrado. Deseja criá-lo?`)) {
+                await adicionarNovoClienteManualmente(clienteName);
+                setTimeout(registoRapidoAdicionar, 1000); 
+                return;
+            } else { return; }
+        }
+
+        const liveName = `Live ${new Date(liveDate).toLocaleDateString('pt-PT')}`;
+        const lives = client.lives ? [...client.lives] : [];
+        let live = lives.find(l => l.liveName.toLowerCase() === liveName.toLowerCase());
+        
+        if (!live) {
+            live = { liveId: `live_${Date.now()}`, liveName, items: [] };
+            lives.push(live);
+        }
+        
+        live.items.push({ artigo, preco, data: liveDate, paid: false, prepared: false });
+
+        const dataToUpdate = { lives };
+
+        const paidStatuses = [
+            'Pago - Preparar com Urgência',
+            'Pago - Preparar (Saída Normal)',
+            'Pago - Aguardar (Juntar com Direto)'
+        ];
+
+        const pendingStatuses = [
+            'Não Pago - Contacto Enviado',
+            'Não Pago - Aguardar Direto',
+            'Não Pago - Pagamento Agendado'
+        ];
+
+        if (paidStatuses.includes(client.status)) {
+            dataToUpdate.status = 'Não Pago - Aguardar Pagamento';
+            dataToUpdate.wasPaidOrder = true;
+            dataToUpdate.portes = 0;
+        } else if (client.status === 'Concluído - Enviado') {
+             dataToUpdate.status = 'Não Pago - Aguardar Pagamento';
+             dataToUpdate.wasPaidOrder = false;
+        } else if (pendingStatuses.includes(client.status)) {
+            dataToUpdate.orderModified = true;
+        }
+
+        try {
+            await updateDoc(doc(getCollectionRef(), client.id), dataToUpdate);
+        } catch (e) {
+            console.error("Erro ao adicionar item/atualizar status: ", e);
+            alert("Ocorreu um erro ao adicionar o item.");
+        }
+
+        document.getElementById('live-entry-artigo').value = '';
+        document.getElementById('live-entry-preco').value = '';
+        document.getElementById('live-entry-artigo').focus();
+    }
+
+
+    // --- FUNÇÕES DA UI ---
+    function filterAndSortClients() {
+        const query = (document.getElementById('client-search').value || '').toLowerCase();
+        const order = document.getElementById('sort-order').value;
+        const hideCompleted = document.getElementById('hide-completed-checkbox').checked;
+
+        let processedClients = [...allClients];
+
+        if (hideCompleted) {
+            processedClients = processedClients.filter(c => c.status !== 'Concluído - Enviado');
+        }
+        
+        processedClients = processedClients.filter(c => c.name.toLowerCase().includes(query));
+        
+        if (order === 'devedores-az') {
+            processedClients = processedClients.filter(clientHasDebt).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+        } else if (order === 'pagos-az') {
+            processedClients = processedClients.filter(c => !clientHasDebt(c)).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+        } else if (order === 'alphabetical') {
+            processedClients.sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+        } else {
+            processedClients.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+        }
+        renderClientMenus(processedClients);
+    }
+
+    function renderClientMenus(clientsToRender) {
+        const container = document.getElementById('clients-container');
+        const openMenus = new Set(Array.from(container.querySelectorAll('.client-menu.open')).map(m => m.id));
+        container.innerHTML = '';
+        
+        clientsToRender.forEach(client => {
+            const clientMenu = document.createElement('div');
+            clientMenu.className = 'client-menu';
+            clientMenu.id = `menu-${client.id}`;
+            if (openMenus.has(clientMenu.id)) clientMenu.classList.add('open');
+            
+            const status = client.status || '';
+            clientMenu.className = 'client-menu'; 
+            if (openMenus.has(clientMenu.id)) clientMenu.classList.add('open');
+
+            if (status === 'Concluído - Enviado') clientMenu.classList.add('status-concluido');
+            else if (status === 'Requer Atenção ❗') clientMenu.classList.add('status-atencao');
+            else if (status === 'Pago - Preparar com Urgência') clientMenu.classList.add('status-pago-urgente');
+            else if (status === 'Pago - Preparar (Saída Normal)') clientMenu.classList.add('status-pago-normal');
+            else if (status === 'Pago - Aguardar (Juntar com Direto)') clientMenu.classList.add('status-pago-aguardar');
+            else if (status === 'Não Pago - Aguardar Direto') clientMenu.classList.add('status-nao-pago-aguardar-direto');
+            else if (status === 'Não Pago - Contacto Enviado') clientMenu.classList.add('status-contacto-enviado');
+            else if (status === 'Não Pago - Pagamento Agendado') clientMenu.classList.add('status-pagamento-agendado');
+            else if (status.startsWith('Não Pago')) clientMenu.classList.add('status-nao-pago-outro');
+
+            const dividaItens = (client.lives || []).flatMap(l => l.items || []).filter(i => !i.paid);
+            const totalDividaCliente = calculateTotal(dividaItens, dividaItens.length > 0 ? client.portes : 0);
+
+            let orderStatusLabel = '';
+            if (client.wasPaidOrder && client.status.startsWith('Não Pago')) {
+                orderStatusLabel = '<span class="order-status-label">ENCOMENDA ABERTA E PAGA (VERIFICAR PORTES)</span>';
+            }
+
+            let modifiedLabel = '';
+            if (client.orderModified) {
+                modifiedLabel = '<span class="modified-order-label">ENCOMENDA ATUALIZADA</span>';
+            }
+
+            clientMenu.innerHTML = `
+                <div class="client-header">
+                    <span class="client-name editavel" data-field="name">${client.name}</span>
+                    <div class="client-header-info">
+                        ${modifiedLabel}
+                        ${orderStatusLabel}
+                        <span class="client-total-preview">Dívida: ${formatCurrency(totalDividaCliente)}</span>
+                    </div>
+                    <span class="toggle-arrow">▼</span>
+                </div>
+                <div class="client-details-content"></div>
+            `;
+            const detailsContainer = clientMenu.querySelector('.client-details-content');
+            detailsContainer.appendChild(buildClientCardContent(client));
+
+            clientMenu.querySelector('.client-header').addEventListener('click', (e) => {
+                if (!e.target.closest('.editavel') && !e.target.closest('.client-header-info')) {
+                     clientMenu.classList.toggle('open');
+                }
+            });
+            clientMenu.querySelector('.client-name.editavel').addEventListener('click', (e) => handleEdit(e, client));
+
+            container.appendChild(clientMenu);
+        });
+    }
+
+    function buildClientCardContent(client) {
+        const cardContent = document.createElement('div');
+        cardContent.className = 'mini-card-content';
+        
+        cardContent.innerHTML = `
+            <div class="client-info-grid">
+                <div class="info-item"><span>Telemóvel:</span><span class="editavel" data-field="telefone">${client.telefone || ''}</span></div>
+                <div class="info-item"><span>Portes:</span><span class="editavel" data-field="portes">${formatCurrency(client.portes)}</span></div>
+                <div class="info-item full-width">
+                    <span>Status da Encomenda:</span>
+                    <div class="status-container">
+                        <select class="client-status-select">
+                            <option value="Não Pago - Aguardar Pagamento">Não Pago - Aguardar Pagamento</option>
+                            <option value="Não Pago - Contacto Enviado">Não Pago - Contacto Enviado</option>
+                            <option value="Não Pago - Pagamento Agendado">Não Pago - Pagamento Agendado</option>
+                            <option value="Não Pago - Aguardar Direto">Não Pago - Aguardar Direto</option>
+                            <option value="Não Pago - Limite Excedido (Contactar)">Não Pago - Limite Excedido (Contactar)</option>
+                            <option value="Pago - Preparar com Urgência">Pago - Preparar com Urgência</option>
+                            <option value="Pago - Preparar (Saída Normal)">Pago - Preparar (Saída Normal)</option>
+                            <option value="Pago - Aguardar (Juntar com Direto)">Pago - Aguardar (Juntar com Direto)</option>
+                            <option value="Concluído - Enviado">Concluído - Enviado</option>
+                            <option value="Requer Atenção ❗">Requer Atenção ❗</option>
+                        </select>
+                        <span class="status-message"></span>
+                    </div>
+                </div>
+                <div class="info-item full-width"><span>Nome Envio:</span><span class="editavel" data-field="shippingName">${client.shippingName || ''}</span></div>
+                <div class="info-item full-width"><span>Morada:</span><span class="editavel" data-field="morada">${client.morada || ''}</span></div>
+                <div class="info-item full-width"><span>Notas de Preparação:</span><span class="editavel" data-field="notes">${client.notes || ''}</span></div>
+            </div>
+            <table><thead><tr><th><input type="checkbox" class="select-all-items"></th><th>Artigo</th><th>Preço</th><th>Prémio</th><th>Remover</th></tr></thead><tbody></tbody></table>
+            <div class="subtotal-selecionado" style="display: none;"></div>
+            <div class="client-actions">
+                <button class="marcar-pago-btn">Marcar Selecionados como Pagos</button>
+                <button class="whatsapp-btn">Enviar Resumo WhatsApp</button>
+                <button class="copiar-messenger-btn">Copiar Resumo</button>
+                <button class="abrir-messenger-btn">Abrir Messenger</button>
+                <button class="imprimir-etiqueta-btn">Imprimir Etiqueta</button>
+                <button class="delete-client-btn">Eliminar Cliente</button>
+            </div>
+        `;
+
+        const statusSelect = cardContent.querySelector('.client-status-select');
+        statusSelect.value = client.status || 'Não Pago - Aguardar Pagamento';
+        statusSelect.addEventListener('change', (e) => updateClientField(client.id, 'status', e.target.value));
+
+        const tbody = cardContent.querySelector('tbody');
+        (client.lives || []).forEach(live => {
+            const liveHeaderRow = tbody.insertRow();
+            liveHeaderRow.innerHTML = `<td colspan="5" style="background-color: #f0f0f0; font-weight: bold;">${live.liveName}</td>`;
+            (live.items || []).forEach((item, index) => {
+                const newRow = tbody.insertRow();
+                newRow.className = item.paid ? 'item-pago' : 'item-nao-pago';
+                const preparedIcon = item.prepared ? '<span class="prepared-icon">✓</span>' : '';
+                newRow.innerHTML = `
+                    <td><input type="checkbox" class="item-selector" data-live-id="${live.liveId}" data-item-index="${index}" ${item.paid ? 'disabled' : ''}></td>
+                    <td>${preparedIcon} <span class="editavel" data-live-id="${live.liveId}" data-item-index="${index}" data-field="artigo">${item.artigo || ''}</span></td>
+                    <td><span class="editavel" data-live-id="${live.liveId}" data-item-index="${index}" data-field="preco">${formatCurrency(item.preco)}</span></td>
+                    <td><button class="premio-btn">🎁</button></td>
+                    <td><button class="remove-item-btn">❌</button></td>
+                `;
+            });
+        });
+
+        cardContent.querySelectorAll('.editavel').forEach(el => el.addEventListener('click', (e) => handleEdit(e, client)));
+        cardContent.querySelectorAll('.item-selector').forEach(el => el.addEventListener('change', () => atualizarSubtotalSelecionado(cardContent, client)));
+        cardContent.querySelector('.select-all-items').addEventListener('change', (e) => {
+            cardContent.querySelectorAll('.item-selector:not(:disabled)').forEach(cb => cb.checked = e.target.checked);
+            atualizarSubtotalSelecionado(cardContent, client);
+        });
+        cardContent.querySelector('.marcar-pago-btn').addEventListener('click', () => marcarSelecionadosComoPagos(cardContent, client));
+        cardContent.querySelector('.whatsapp-btn').addEventListener('click', () => enviarWhatsAppResumo(client));
+        cardContent.querySelector('.imprimir-etiqueta-btn').addEventListener('click', () => imprimirEtiqueta(client));
+        cardContent.querySelector('.delete-client-btn').addEventListener('click', () => deleteClient(client.id));
+        cardContent.querySelector('.copiar-messenger-btn').addEventListener('click', () => copiarResumo(client));
+        cardContent.querySelector('.abrir-messenger-btn').addEventListener('click', () => window.open('https://m.me/Belissimastore2009', '_blank'));
+        
+        (client.lives || []).forEach(live => {
+            (live.items || []).forEach((item, index) => {
+                const row = cardContent.querySelector(`[data-live-id="${live.liveId}"][data-item-index="${index}"]`)?.closest('tr');
+                if (row) {
+                    row.querySelector('.remove-item-btn').addEventListener('click', () => removerItem(client, live.liveId, index));
+                    row.querySelector('.premio-btn').addEventListener('click', () => marcarComoPremio(client, live.liveId, index));
+                }
+            });
+        });
+
+        return cardContent;
+    }
+    
+    function handleEdit(e, client) {
+        const target = e.target;
+        const field = target.dataset.field;
+        let originalValue;
+
+        if (target.dataset.liveId) {
+            const item = client.lives.find(l => l.liveId === target.dataset.liveId).items[target.dataset.itemIndex];
+            originalValue = item[field];
+        } else {
+            originalValue = client[field];
+        }
+        
+        const promptValue = (field === 'preco' || field === 'portes') ? formatCurrency(originalValue).replace('€','').trim() : originalValue;
+        const newValue = prompt(`Editar ${field}:`, promptValue);
+
+        if (newValue !== null && newValue !== String(originalValue)) {
+            if (target.dataset.liveId) {
+                const updatedLives = JSON.parse(JSON.stringify(client.lives));
+                const item = updatedLives.find(l => l.liveId === target.dataset.liveId).items[target.dataset.itemIndex];
+                item[field] = field === 'preco' ? parseCurrency(newValue) : newValue;
+                updateClientField(client.id, 'lives', updatedLives);
+            } else {
+                updateClientField(client.id, field, (field === 'portes') ? parseCurrency(newValue) : newValue);
+            }
+        }
+    }
+    
+    async function marcarComoPremio(client, liveId, itemIndex) {
+        if (!confirm("Tem a certeza que deseja marcar este artigo como PRÉMIO? O preço será alterado para 0,00 €.")) return;
+        
+        const updatedLives = JSON.parse(JSON.stringify(client.lives));
+        const item = updatedLives.find(l => l.liveId === liveId).items[itemIndex];
+        if (!item.artigo.startsWith('[PRÉMIO]')) item.artigo = `[PRÉMIO] ${item.artigo}`;
+        item.preco = 0;
+        await updateClientField(client.id, 'lives', updatedLives);
+    }
+    
+    async function removerItem(client, liveId, itemIndex) {
+        if (!confirm("Tem a certeza que deseja remover este artigo?")) return;
+        const updatedLives = JSON.parse(JSON.stringify(client.lives));
+        const live = updatedLives.find(l => l.liveId === liveId);
+        live.items.splice(itemIndex, 1);
+        await updateClientField(client.id, 'lives', updatedLives);
+    }
+
+    function atualizarSubtotalSelecionado(cardContent, client) {
+        const subtotalDiv = cardContent.querySelector('.subtotal-selecionado');
+        const { total } = getSelectedItems(cardContent, client);
+        if (total === 0) {
+            subtotalDiv.style.display = 'none';
+        } else {
+            subtotalDiv.innerHTML = `Subtotal Selecionado (c/ portes): <strong>${formatCurrency(total)}</strong>`;
+            subtotalDiv.style.display = 'block';
+        }
+    }
+
+    function getSelectedItems(cardContent, client) {
+        let itemsSelecionados = [];
+        cardContent.querySelectorAll('.item-selector:checked').forEach(cb => {
+            const live = client.lives.find(l => l.liveId === cb.dataset.liveId);
+            if(live) itemsSelecionados.push(live.items[cb.dataset.itemIndex]);
+        });
+        const total = calculateTotal(itemsSelecionados, itemsSelecionados.length > 0 ? client.portes : 0);
+        return { items: itemsSelecionados, total };
+    }
+
+    async function marcarSelecionadosComoPagos(cardContent, client) {
+        const checkboxes = cardContent.querySelectorAll('.item-selector:checked');
+        if (checkboxes.length === 0) { alert("Nenhum artigo selecionado."); return; }
+
+        const updatedLives = JSON.parse(JSON.stringify(client.lives));
+        checkboxes.forEach(cb => {
+            const live = updatedLives.find(l => l.liveId === cb.dataset.liveId);
+            if(live) live.items[cb.dataset.itemIndex].paid = true;
+        });
+        await updateClientField(client.id, 'lives', updatedLives);
+    }
+    
+    function enviarWhatsAppResumo(client) {
+        const itensNaoPagos = (client.lives || []).flatMap(l => l.items || []).filter(i => !i.paid);
+        if (itensNaoPagos.length === 0) { alert("Este cliente não tem artigos pendentes de pagamento."); return; }
+        const totalDivida = calculateTotal(itensNaoPagos, client.portes);
+        let mensagem = `Olá ${client.name}!\n\nSegue o resumo de todos os seus artigos pendentes:\n`;
+        itensNaoPagos.forEach(item => { mensagem += `- ${item.artigo}: ${formatCurrency(item.preco)}\n`; });
+        mensagem += `\nPortes de Envio: ${formatCurrency(client.portes)}\nTotal a Pagar: ${formatCurrency(totalDivida)}\n\nAgradecemos a sua preferência!`;
+        window.open(`https://wa.me/${client.telefone.replace(/\s/g, '')}?text=${encodeURIComponent(mensagem)}`, '_blank');
+    }
+
+    function copiarResumo(client) {
+        const itensNaoPagos = (client.lives || []).flatMap(l => l.items || []).filter(i => !i.paid);
+        if (itensNaoPagos.length === 0) { alert("Este cliente não tem artigos pendentes de pagamento."); return; }
+        const totalDivida = calculateTotal(itensNaoPagos, client.portes);
+        let textoParaCopiar = `✨ Olá, ${client.name}! ✨\n\nSegue o resumo da sua encomenda pendente:\n--------------------------------\n`;
+        itensNaoPagos.forEach(item => { textoParaCopiar += `- ${item.artigo}: ${formatCurrency(item.preco)}\n`; });
+        textoParaCopiar += `--------------------------------\n(+) Portes de Envio: ${formatCurrency(client.portes)}\n\n💶 Total a Pagar: ${formatCurrency(totalDivida)}\n\nAgradecemos a sua preferência!`;
+        navigator.clipboard.writeText(textoParaCopiar).then(() => {
+            alert('Resumo copiado! Não se esqueça de alterar o status para "Não Pago - Contacto Enviado" para marcar a cliente a azul.');
+        });
+    }
+
+    function atualizarSugestoes() {
+        const artigosSet = new Set();
+        const clientesDatalist = document.getElementById('clientes-sugestoes');
+        clientesDatalist.innerHTML = '';
+        allClients.forEach(client => {
+            const option = document.createElement('option');
+            option.value = client.name;
+            clientesDatalist.appendChild(option);
+            (client.lives || []).forEach(live => {
+                (live.items || []).forEach(item => { if (item.artigo) artigosSet.add(item.artigo); });
+            });
+        });
+        const artigosDatalist = document.getElementById('artigos-sugestoes');
+        artigosDatalist.innerHTML = '';
+        Array.from(artigosSet).sort().forEach(artigo => {
+            const option = document.createElement('option');
+            option.value = artigo;
+            artigosDatalist.appendChild(option);
+        });
+    }
+
+    // --- MÓDULO DE PAGAMENTOS ---
+    function renderPagamentosModal() {
+        const devedores = allClients.filter(client => client.status !== 'Concluído - Enviado');
+        const listContainer = document.getElementById('pagamentos-list');
+        listContainer.innerHTML = '<p style="text-align:center;">Não há clientes com status a gerir.</p>';
+        if (devedores.length === 0) return;
+
+        listContainer.innerHTML = '';
+        devedores.sort((a,b) => a.name.localeCompare(b.name, 'pt')).forEach(client => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'pagamentos-item';
+            itemDiv.innerHTML = `<span class="pagamentos-name">${client.name}</span><select class="pagamentos-status-select" data-client-id="${client.id}"></select>`;
+            const statusSelect = itemDiv.querySelector('.pagamentos-status-select');
+            const options = [
+                'Não Pago - Aguardar Pagamento', 'Não Pago - Contacto Enviado', 'Não Pago - Pagamento Agendado',
+                'Não Pago - Aguardar Direto', 'Não Pago - Limite Excedido (Contactar)',
+                'Pago - Preparar com Urgência', 'Pago - Preparar (Saída Normal)', 
+                'Pago - Aguardar (Juntar com Direto)', 'Concluído - Enviado', 'Requer Atenção ❗'
+            ];
+            options.forEach(opt => statusSelect.add(new Option(opt, opt)));
+            statusSelect.value = client.status || 'Não Pago - Aguardar Pagamento';
+            statusSelect.addEventListener('change', (e) => updateClientField(e.target.dataset.clientId, 'status', e.target.value));
+            listContainer.appendChild(itemDiv);
+        });
+    }
+
+    // --- FUNÇÕES DE IMPRESSÃO E RELATÓRIOS ---
+    function imprimirDevedores() {
+        const devedores = allClients.filter(clientHasDebt).sort((a,b) => a.name.localeCompare(b.name, 'pt'));
+        if (devedores.length === 0) { alert("Não há clientes com dívidas."); return; }
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html><head><title>Lista de Devedores</title><style>body{font-family:sans-serif;} .cliente{page-break-inside:avoid; border:2px solid #000; padding:15px; margin-bottom:20px;} table{width:100%; border-collapse:collapse;} th,td{border:1px solid #ccc; padding:8px; text-align:left;} .total{font-weight:bold;}</style></head><body>`);
+        devedores.forEach(client => {
+            const itensNaoPagos = (client.lives || []).flatMap(l => l.items).filter(i => !i.paid);
+            const totalDivida = calculateTotal(itensNaoPagos, client.portes);
+            printWindow.document.write(`<div class="cliente"><h2>${client.name}</h2><p><b>Status:</b> ${client.status || 'N/A'}</p><table><thead><tr><th>Artigo</th><th>Preço</th></tr></thead><tbody>`);
+            itensNaoPagos.forEach(item => printWindow.document.write(`<tr><td>${item.artigo}</td><td>${formatCurrency(item.preco)}</td></tr>`));
+            printWindow.document.write(`<tr><td class="total">Portes</td><td class="total">${formatCurrency(client.portes)}</td></tr>`);
+            printWindow.document.write(`<tr><td class="total">Total em Dívida</td><td class="total">${formatCurrency(totalDivida)}</td></tr></tbody></table></div>`);
+        });
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 250);
+    }
+
+    function imprimirEtiqueta(client) {
+        if (!client || !client.morada) { alert("Preencha a morada e o nome de envio."); return; }
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html><head><title>Etiqueta</title><style>@page{size:100mm 62mm;margin:0;}body{font-family:Arial,sans-serif;margin:0;padding:0;width:100mm;height:100mm;display:flex;align-items:center;justify-content:center;}.etiqueta{width:100%;height:100%;box-sizing:border-box;padding:5mm;text-align:center;display:flex;flex-direction:column;justify-content:space-between;}p{margin:5px 0;}.conteudo-principal{flex-grow:1;display:flex;flex-direction:column;justify-content:center;}.nome-cliente{font-size:28pt;font-weight:bold;}.morada-cliente{font-size:16pt;white-space:pre-wrap;line-height:1.4;}.nome-informal{font-size:10pt;color:#555;text-align:right;}</style></head><body><div class="etiqueta"><div class="conteudo-principal"><p class="nome-cliente">${client.shippingName}</p><p class="morada-cliente">${client.morada}</p></div><p class="nome-informal">${client.name}</p></div></body></html>`);
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 500);
+    }
+
+    function imprimirTodasEtiquetas() {
+        const clientesComMorada = allClients.filter(c => c.morada && c.morada.trim() !== '').sort((a,b) => a.name.localeCompare(b.name, 'pt'));
+        if (clientesComMorada.length === 0) { alert("Nenhum cliente com morada preenchida."); return; }
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`<html><head><title>Etiquetas</title><style>@page{size:100mm 62mm;margin:0;}body{font-family:Arial,sans-serif;margin:0;padding:0;}.etiqueta{width:100mm;height:100mm;box-sizing:border-box;padding:5mm;text-align:center;display:flex;flex-direction:column;justify-content:space-between;page-break-after:always;}p{margin:5px 0;}.conteudo-principal{flex-grow:1;display:flex;flex-direction:column;justify-content:center;}.nome-cliente{font-size:28pt;font-weight:bold;}.morada-cliente{font-size:16pt;white-space:pre-wrap;line-height:1.4;}.nome-informal{font-size:10pt;color:#555;text-align:right;}</style></head><body>`);
+        clientesComMorada.forEach(client => printWindow.document.write(`<div class="etiqueta"><div class="conteudo-principal"><p class="nome-cliente">${client.shippingName}</p><p class="morada-cliente">${client.morada}</p></div><p class="nome-informal">${client.name}</p></div>`));
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 500);
+    }
+
+    function generateAndDisplayReport(liveName) {
+        const reportContentDiv = document.getElementById('report-content');
+        
+        if (liveName === '__GERAL__') {
+            let valorTotalSemPortes = 0, totalArtigos = 0, totalPortes = 0;
+            allClients.forEach(client => {
+                totalPortes += client.portes || 0;
+                (client.lives || []).forEach(live => {
+                    (live.items || []).forEach(item => {
+                        if (item && item.artigo && item.artigo.trim() !== '') {
+                            valorTotalSemPortes += item.preco || 0; 
+                            totalArtigos++;
+                        }
+                    });
+                });
+            });
+            reportContentDiv.innerHTML = `
+                <h4>Relatório Geral Completo</h4>
+                <p><strong>Número Total de Clientes:</strong> ${allClients.length}</p>
+                <p><strong>Total de Artigos Reais (todas as lives):</strong> ${totalArtigos}</p>
+                <p><strong>Valor Total dos Artigos (sem portes):</strong> ${formatCurrency(valorTotalSemPortes)}</p>
+                <p><strong>Valor Total em Portes:</strong> ${formatCurrency(totalPortes)}</p>
+            `;
+            return;
+        }
+
+        let valorTotal = 0, totalArtigos = 0;
+        const clientesEnvolvidos = new Set();
+        allClients.forEach(client => {
+            (client.lives || []).forEach(live => {
+                if (live.liveName === liveName) {
+                    (live.items || []).forEach(item => {
+                        if (item && item.artigo && item.artigo.trim() !== '') {
+                            valorTotal += item.preco || 0;
+                            totalArtigos++;
+                            clientesEnvolvidos.add(client.name);
+                        }
+                    });
+                }
+            });
+        });
+        reportContentDiv.innerHTML = `
+            <h4>Relatório para: ${liveName}</h4>
+            <p><strong>Número de Clientes Envolvidos:</strong> ${clientesEnvolvidos.size}</p>
+            <p><strong>Total de Artigos Vendidos:</strong> ${totalArtigos}</p>
+            <p><strong>Valor Total Arrecadado (sem portes):</strong> ${formatCurrency(valorTotal)}</p>
+        `;
+    }
+
+    function showReportsModal() {
+        const buttonsContainer = document.getElementById('live-report-buttons');
+        const reportContentDiv = document.getElementById('report-content');
+        buttonsContainer.innerHTML = '';
+        reportContentDiv.innerHTML = '';
+
+        const btnGeral = document.createElement('button');
+        btnGeral.textContent = 'Ver Relatório Geral de Tudo';
+        btnGeral.className = 'geral';
+        btnGeral.onclick = () => generateAndDisplayReport('__GERAL__');
+        buttonsContainer.appendChild(btnGeral);
+
+        const liveNames = new Set();
+        allClients.forEach(c => (c.lives || []).forEach(l => liveNames.add(l.liveName)));
+        
+        Array.from(liveNames).sort().forEach(name => {
+            if (!name) return;
+            const btn = document.createElement('button');
+            btn.textContent = name;
+            btn.onclick = () => generateAndDisplayReport(name);
+            buttonsContainer.appendChild(btn);
+        });
+
+        document.getElementById('report-container').classList.add('visible');
+    }
+
+    function gerarLinksWhatsAppDevedores() {
+        const devedores = allClients.filter(clientHasDebt);
+        if (devedores.length === 0) { alert("Não há clientes com dívidas."); return; }
+        const linksList = document.getElementById('links-list');
+        linksList.innerHTML = '';
+        devedores.forEach(client => {
+            if (!client.telefone || client.telefone.length < 9) {
+                linksList.innerHTML += `<p style="color:red;">Cliente ${client.name} não tem número válido.</p>`;
+                return;
+            }
+            const itensNaoPagos = (client.lives || []).flatMap(l => l.items).filter(i => !i.paid);
+            const totalDivida = calculateTotal(itensNaoPagos, client.portes);
+            let mensagem = `Olá ${client.name}!\n\nSegue a lista dos seus artigos pendentes:\n`;
+            itensNaoPagos.forEach(item => { mensagem += `- ${item.artigo}: ${formatCurrency(item.preco)}\n`; });
+            mensagem += `\nPortes de Envio: ${formatCurrency(client.portes)}\nTotal a Pagar: ${formatCurrency(totalDivida)}\n\nObrigada!`;
+            const link = document.createElement('a');
+            link.href = `https://wa.me/${client.telefone.replace(/\s/g, '')}?text=${encodeURIComponent(mensagem)}`;
+            link.target = '_blank';
+            link.textContent = `Enviar para ${client.name} (${formatCurrency(totalDivida)})`;
+            linksList.appendChild(link);
+        });
+        document.getElementById('generated-links-container').classList.add('visible');
+    }
+
+    // --- INICIALIZAÇÃO E EVENTOS ---
+    async function main() {
+        document.getElementById('add-new-client').addEventListener('click', () => adicionarNovoClienteManualmente());
+        document.getElementById('clear-all-data').addEventListener('click', limparTodosOsDados);
+        document.getElementById('show-reports-btn').addEventListener('click', showReportsModal);
+        document.getElementById('print-devedores').addEventListener('click', imprimirDevedores);
+        document.getElementById('print-all-etiquetas').addEventListener('click', imprimirTodasEtiquetas);
+        document.getElementById('send-whatsapp-debtors-btn').addEventListener('click', gerarLinksWhatsAppDevedores);
+
+        document.getElementById('client-search').addEventListener('input', filterAndSortClients);
+        document.getElementById('sort-order').addEventListener('change', filterAndSortClients);
+        document.getElementById('hide-completed-checkbox').addEventListener('change', filterAndSortClients);
+        
+        document.getElementById('live-entry-add').addEventListener('click', registoRapidoAdicionar);
+        document.getElementById('live-entry-date').value = new Date().toISOString().slice(0, 10);
+        
+        document.getElementById('show-pagamentos-btn').addEventListener('click', () => document.getElementById('pagamentos-container').classList.add('visible'));
+        document.getElementById('close-pagamentos').addEventListener('click', () => document.getElementById('pagamentos-container').classList.remove('visible'));
+        document.getElementById('close-links').addEventListener('click', () => document.getElementById('generated-links-container').classList.remove('visible'));
+        document.getElementById('close-report').addEventListener('click', () => document.getElementById('report-container').classList.remove('visible'));
+        
+        try {
+            await signInAnonymously(auth);
+            console.log("Autenticado com sucesso de forma anónima.");
+            startApp();
+        } catch (error) {
+            console.error("Falha na autenticação anónima:", error);
+            document.getElementById('loading-indicator').innerText = "Falha na autenticação. Por favor, siga o guia de configuração do Firebase.";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', main);
+</script>
+</body>
+</html>
